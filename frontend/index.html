@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>人生回忆录</title>
+<style>
+:root {
+  --bg: #FFF8F0;
+  --primary: #C46B4A;
+  --primary-light: #E8A87C;
+  --user-bubble: #F5E6D8;
+  --ai-bubble: #FFFFFF;
+  --text: #4A3728;
+  --text-light: #8B7355;
+  --shadow: 0 1px 3px rgba(74,55,40,0.08);
+  --radius: 18px;
+  --radius-sm: 12px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-size: 16px; color: var(--text); background: var(--bg);
+  min-height: 100dvh; -webkit-tap-highlight-color: transparent;
+  user-select: none; -webkit-user-select: none;
+  overflow-x: hidden;
+}
+.screen { display: none; }
+.screen.active { display: flex; flex-direction: column; min-height: 100dvh; }
+
+/* ═══ 序语 Landing ═══ */
+#landing-screen {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 100dvh;
+  background: linear-gradient(180deg, #FFF8EC 0%, #FDF0DC 30%, #F8E8CE 60%, #F0DCC0 100%);
+  position: relative; overflow: hidden; transition: opacity 0.8s, transform 0.8s;
+}
+#landing-screen.fade-out {
+  opacity: 0; transform: scale(1.05); pointer-events: none;
+}
+
+/* 粒子光点 */
+.landing-particles {
+  position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+}
+.particle {
+  position: absolute; width: 3px; height: 3px; background: rgba(196,107,74,0.35);
+  border-radius: 50%; animation: float-up 8s infinite ease-in;
+}
+@keyframes float-up {
+  0% { transform: translateY(100vh) scale(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(-10vh) scale(1.5); opacity: 0; }
+}
+
+/* 序语文案 */
+.landing-text {
+  z-index: 2; text-align: center; padding: 0 30px; max-width: 360px;
+}
+.landing-text .line {
+  display: block; color: #5C3D2E; font-size: 15px; line-height: 2;
+  letter-spacing: 1px; opacity: 0; transform: translateY(20px);
+  animation: fadeInUp 0.8s ease forwards;
+}
+.landing-text .line:nth-child(1) { animation-delay: 0.3s; }
+.landing-text .line:nth-child(2) { animation-delay: 1.0s; }
+.landing-text .line:nth-child(3) { animation-delay: 1.7s; }
+.landing-text .line:nth-child(4) { animation-delay: 2.4s; font-size: 18px; font-weight: 600; margin-top: 8px; color: #A06038; }
+@keyframes fadeInUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 门 */
+.landing-door-wrapper {
+  z-index: 2; margin-top: 36px; perspective: 800px;
+  opacity: 0; transform: translateY(30px);
+  transition: opacity 1s ease, transform 1s ease;
+}
+.landing-door-wrapper.visible {
+  opacity: 1; transform: translateY(0);
+}
+.landing-door {
+  width: 140px; height: 200px;
+  background: linear-gradient(180deg, #B8845C 0%, #9A6B45 25%, #8B5E3A 50%, #7A4F2E 75%, #6B4224 100%);
+  border-radius: 12px 12px 0 0; position: relative; cursor: pointer;
+  box-shadow: 0 4px 20px rgba(100,50,20,0.25), inset 0 0 30px rgba(0,0,0,0.25);
+  transition: transform 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.8s;
+  transform-origin: left center;
+}
+.landing-door::before {
+  content: ''; position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+  width: 12px; height: 12px; border-radius: 50%;
+  background: radial-gradient(circle, #C8A060, #7A4F2E);
+  box-shadow: 0 0 10px rgba(180,120,60,0.4);
+}
+.landing-door::after {
+  content: ''; position: absolute; inset: 6px; border: 2px solid rgba(0,0,0,0.08);
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%);
+}
+.landing-door.open {
+  transform: rotateY(-105deg);
+  box-shadow: 0 0 80px rgba(255,200,120,0.5);
+}
+.landing-door-hint {
+  text-align: center; margin-top: 14px; z-index: 2;
+  color: #8B6B50; font-size: 13px;
+  animation: pulse-hint 2.5s ease-in-out infinite;
+}
+@keyframes pulse-hint {
+  0%, 100% { opacity: 0.4; } 50% { opacity: 1; }
+}
+
+/* 光线溢出 */
+.light-spill {
+  position: absolute; left: 0; top: 0; width: 0; height: 100%;
+  background: radial-gradient(ellipse at left center, rgba(255,245,225,0.8) 0%, transparent 70%);
+  pointer-events: none; z-index: 1; transition: width 1.2s ease;
+}
+.light-spill.active { width: 100%; }
+
+/* 音频按钮 */
+.audio-toggle {
+  position: fixed; top: 16px; right: 16px; z-index: 100;
+  width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(180,130,100,0.12); border: 1.5px solid rgba(160,100,60,0.25);
+  color: #8B6B50; font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px); transition: background 0.2s;
+}
+.audio-toggle:active { background: rgba(180,130,100,0.22); }
+.audio-toggle.muted { color: rgba(140,100,70,0.35); }
+
+/* ═══ 风格选择页 ═══ */
+#style-screen { padding: 24px 20px; align-items: center; justify-content: center; }
+.style-header { text-align: center; margin-bottom: 24px; }
+.style-header .icon { font-size: 48px; margin-bottom: 8px; }
+.style-header h1 { font-size: 22px; font-weight: 600; }
+.style-header p { font-size: 14px; color: var(--text-light); margin-top: 6px; }
+.style-cards { width: 100%; max-width: 400px; }
+.style-card {
+  background: white; border-radius: var(--radius); padding: 14px 16px;
+  margin-bottom: 10px; box-shadow: var(--shadow); border: 2px solid transparent;
+  cursor: pointer; transition: border-color 0.2s, transform 0.15s;
+}
+.style-card:active { transform: scale(0.98); }
+.style-card.selected { border-color: var(--primary); background: #FFF5EF; }
+.style-card .card-label { font-size: 15px; font-weight: 600; color: var(--primary); margin-bottom: 6px; }
+.style-card .card-preview { font-size: 13px; color: var(--text-light); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.custom-style { width: 100%; max-width: 400px; margin-top: 4px; }
+.custom-style textarea {
+  width: 100%; height: 64px; border: 1.5px solid #E0D5C9; border-radius: var(--radius-sm);
+  padding: 10px; font-size: 14px; font-family: inherit; color: var(--text); background: white; resize: none; outline: none;
+}
+.custom-style textarea:focus { border-color: var(--primary-light); }
+.btn-next {
+  width: 100%; max-width: 400px; margin-top: 16px; padding: 14px;
+  background: var(--primary); color: white; border: none; border-radius: 50px;
+  font-size: 17px; font-weight: 600; cursor: pointer; letter-spacing: 1px;
+  transition: background 0.2s, transform 0.15s;
+}
+.btn-next:active { background: #A85A3A; transform: scale(0.97); }
+.btn-next:disabled { background: #CCC; cursor: not-allowed; }
+
+/* ═══ 基本信息页 ═══ */
+#info-screen { padding: 24px 20px; align-items: center; }
+.info-header { text-align: center; margin-bottom: 20px; }
+.info-header .icon { font-size: 40px; margin-bottom: 6px; }
+.info-header h2 { font-size: 20px; font-weight: 600; }
+.info-header p { font-size: 14px; color: var(--text-light); margin-top: 4px; }
+.info-form { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 14px; }
+.info-form label { font-size: 14px; font-weight: 600; color: var(--text); }
+.info-form input, .info-form select {
+  width: 100%; padding: 12px 14px; border: 1.5px solid #E0D5C9; border-radius: var(--radius-sm);
+  font-size: 15px; font-family: inherit; color: var(--text); background: white; outline: none;
+}
+.info-form input:focus, .info-form select:focus { border-color: var(--primary-light); }
+.info-form input::placeholder { color: #C0B0A0; }
+.stage-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.stage-chip {
+  padding: 6px 14px; border-radius: 20px; border: 1.5px solid #E0D5C9;
+  background: white; font-size: 13px; color: var(--text); cursor: pointer;
+  transition: all 0.15s;
+}
+.stage-chip:active { transform: scale(0.95); }
+.stage-chip.picked { background: var(--primary); color: white; border-color: var(--primary); }
+.info-form .hint { font-size: 12px; color: var(--text-light); margin-top: -8px; }
+
+/* ═══ 聊天页 ═══ */
+#chat-screen { background: var(--bg); }
+.chat-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  position: sticky; top: 0; z-index: 10; gap: 8px;
+}
+.chat-header .left { display: flex; align-items: center; gap: 6px; cursor: pointer; min-width: 0; flex: 1; }
+.chat-header .left .icon { font-size: 20px; flex-shrink: 0; }
+.chat-header .left .info { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-header .left .stage-badge {
+  font-size: 11px; background: #FFF5EF; color: var(--primary); padding: 2px 8px;
+  border-radius: 10px; white-space: nowrap; flex-shrink: 0;
+}
+.chat-header .btn-save {
+  background: none; border: 1.5px solid var(--primary-light); color: var(--primary);
+  padding: 5px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.chat-header .btn-save:active { background: #FFF5EF; }
+
+.messages-container {
+  flex: 1; overflow-y: auto; padding: 14px 10px;
+  display: flex; flex-direction: column; gap: 12px; -webkit-overflow-scrolling: touch;
+}
+.message-row { display: flex; align-items: flex-end; gap: 8px; max-width: 85%; }
+.message-row.user { align-self: flex-end; flex-direction: row-reverse; }
+.message-row.assistant { align-self: flex-start; }
+.avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.avatar.ai { background: #FFF5EF; }
+.avatar.user { background: var(--user-bubble); }
+.bubble { padding: 10px 14px; border-radius: var(--radius); font-size: 15px; line-height: 1.6; word-break: break-word; }
+.bubble.ai { background: var(--ai-bubble); box-shadow: var(--shadow); border-bottom-left-radius: 4px; }
+.bubble.user { background: var(--user-bubble); border-bottom-right-radius: 4px; }
+.bubble .stage-transition { display: block; text-align: center; font-size: 12px; color: var(--primary); margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px dashed #E0D5C9; }
+
+.typing-indicator { display: none; align-self: flex-start; padding: 12px 16px; background: var(--ai-bubble); border-radius: var(--radius); border-bottom-left-radius: 4px; box-shadow: var(--shadow); }
+.typing-indicator.active { display: flex; gap: 5px; }
+.typing-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--primary-light); animation: bounce 1.2s infinite; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-8px); } }
+
+.chat-footer { padding: 8px 10px; padding-bottom: max(8px, env(safe-area-inset-bottom)); background: white; box-shadow: 0 -1px 2px rgba(0,0,0,0.04); display: flex; flex-direction: column; gap: 6px; }
+.chat-footer .input-row { display: flex; align-items: center; gap: 8px; }
+.chat-footer input {
+  flex: 1; border: 1.5px solid #E8DDD2; border-radius: 50px; padding: 10px 16px;
+  font-size: 15px; font-family: inherit; color: var(--text); outline: none; background: var(--bg);
+}
+.chat-footer input:focus { border-color: var(--primary-light); }
+.btn-voice {
+  width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--primary-light);
+  color: white; font-size: 18px; cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; transition: background 0.15s, transform 0.1s;
+}
+.btn-voice:active { background: var(--primary); transform: scale(0.92); }
+.btn-voice.recording { background: #E85D5D; animation: pulse-rec 1.2s infinite; }
+@keyframes pulse-rec { 0%, 100% { box-shadow: 0 0 0 0 rgba(232,93,93,0.4); } 50% { box-shadow: 0 0 0 12px rgba(232,93,93,0); } }
+.btn-row { display: flex; gap: 8px; }
+.btn-write {
+  flex: 1; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 50px;
+  font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+.btn-write:active { background: #A85A3A; }
+.btn-write.has-material { animation: gentle-pulse 2.5s ease-in-out infinite; }
+@keyframes gentle-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(196,107,74,0.25); } 50% { box-shadow: 0 0 0 10px rgba(196,107,74,0); } }
+.btn-next-stage {
+  padding: 10px 16px; background: white; color: var(--primary); border: 1.5px solid var(--primary);
+  border-radius: 50px; font-size: 14px; cursor: pointer; white-space: nowrap;
+}
+.btn-next-stage:active { background: #FFF5EF; }
+
+/* 进度面板 */
+.progress-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 99; }
+.progress-overlay.show { display: block; }
+.progress-panel {
+  display: block; position: fixed; top: 0; right: 0; width: 270px; height: 100dvh;
+  background: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 100;
+  padding: 20px 16px; overflow-y: auto; transition: transform 0.3s; transform: translateX(100%);
+}
+.progress-panel.open { transform: translateX(0); }
+.progress-panel h3 { font-size: 16px; color: var(--text); margin-bottom: 14px; text-align: center; }
+.progress-item { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid #F0E8DC; }
+.progress-item.current { background: #FFF8F0; margin: 0 -8px; padding: 10px 8px; border-radius: 8px; }
+.progress-item .stage-num { font-size: 11px; color: var(--primary-light); width: 24px; text-align: center; flex-shrink: 0; }
+.progress-item .stage-icon { font-size: 20px; flex-shrink: 0; }
+.progress-item .stage-label { font-size: 14px; color: var(--text); flex: 1; }
+.progress-item .stage-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.progress-item .stage-dot.done { background: var(--primary); }
+.progress-item .stage-dot.current { background: var(--primary-light); animation: pulse-dot 1.5s infinite; }
+.progress-item .stage-dot.pending { background: #E0D5C9; }
+@keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ═══ 审阅页 ═══ */
+#review-screen { padding: 20px 14px; padding-bottom: max(20px, env(safe-area-inset-bottom)); gap: 14px; }
+.review-header { text-align: center; margin-bottom: 6px; }
+.review-header h2 { font-size: 20px; }
+.review-header p { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+.chapter-card { background: white; border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+.chapter-card .ch-title { font-size: 16px; font-weight: 600; color: var(--primary); margin-bottom: 8px; }
+.chapter-card .ch-body { font-size: 14px; line-height: 1.7; max-height: 200px; overflow-y: auto; white-space: pre-wrap; }
+.chapter-card .ch-body.expanded { max-height: none; }
+.chapter-card .ch-actions { display: flex; gap: 8px; margin-top: 10px; }
+.btn-sm { padding: 6px 14px; border-radius: 16px; border: 1.5px solid var(--primary-light); background: white; color: var(--primary); font-size: 13px; cursor: pointer; }
+.btn-sm:active { background: #FFF5EF; }
+.btn-sm.primary { background: var(--primary); color: white; border: none; }
+
+.revise-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: center; justify-content: center; }
+.revise-overlay.active { display: flex; }
+.revise-box { background: white; border-radius: var(--radius); padding: 20px; width: 85%; max-width: 360px; }
+.revise-box h4 { font-size: 16px; margin-bottom: 10px; }
+.revise-box textarea { width: 100%; height: 100px; border: 1.5px solid #E0D5C9; border-radius: var(--radius-sm); padding: 10px; font-size: 14px; font-family: inherit; resize: none; outline: none; }
+.revise-box textarea:focus { border-color: var(--primary-light); }
+.revise-box .btns { display: flex; gap: 10px; margin-top: 10px; justify-content: flex-end; }
+
+/* ═══ 导出页 ═══ */
+#export-screen { padding: 40px 20px; align-items: center; justify-content: center; text-align: center; gap: 20px; }
+.export-icon { font-size: 64px; }
+.export-title { font-size: 20px; font-weight: 600; }
+.export-sub { font-size: 14px; color: var(--text-light); }
+.btn-export { width: 100%; max-width: 300px; padding: 14px; border-radius: 50px; font-size: 16px; font-weight: 600; cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.btn-export.docx { background: var(--primary); color: white; }
+.btn-export.pdf { background: white; color: var(--primary); border: 2px solid var(--primary); }
+.btn-export:active { transform: scale(0.97); }
+
+.toast { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); background: #4A3728; color: white; padding: 10px 20px; border-radius: 50px; font-size: 14px; z-index: 300; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.toast.show { opacity: 1; }
+.loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,248,240,0.85); z-index: 250; align-items: center; justify-content: center; flex-direction: column; gap: 14px; }
+.loading-overlay.active { display: flex; }
+.loading-spinner { width: 40px; height: 40px; border: 3px solid #F0E8DC; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 14px; color: var(--text-light); }
+
+@media (min-width: 600px) { .message-row { max-width: 65%; } }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+<div class="loading-overlay" id="loading"><div class="loading-spinner"></div><div class="loading-text" id="loading-text">请稍候...</div></div>
+
+<!-- 音频控制 -->
+<audio id="bgm" loop preload="auto" src="static/glassmoon - 雨上がりの空.mp3"></audio>
+<button class="audio-toggle" id="audio-toggle" title="音乐开/关">🔇</button>
+
+<!-- ═══ 序语 Landing ═══ -->
+<div class="screen active" id="landing-screen">
+  <div class="landing-particles" id="particles"></div>
+  <div class="landing-text">
+    <span class="line">每个人的人生</span>
+    <span class="line">都是一本还没来得及翻开的书</span>
+    <span class="line">那些笑过、哭过、走过的日子</span>
+    <span class="line">值得被温柔地记下来 ✨</span>
+  </div>
+  <div class="landing-door-wrapper">
+    <div class="light-spill" id="light-spill"></div>
+    <div class="landing-door" id="landing-door"></div>
+    <div class="landing-door-hint">👆 推开这扇门</div>
+  </div>
+</div>
+
+<!-- ═══ 风格选择页 ═══ -->
+<div class="screen" id="style-screen">
+  <div class="style-header"><div class="icon">📖</div><h1>欢迎来到您的回忆录</h1><p>选一种您喜欢的文风吧~</p></div>
+  <div class="style-cards" id="style-cards"></div>
+  <div class="custom-style"><textarea id="custom-style-input" placeholder="或者用您自己的话形容想要的感觉……"></textarea></div>
+  <button class="btn-next" id="btn-style-next" disabled>下一步 →</button>
+</div>
+
+<!-- ═══ 基本信息页 ═══ -->
+<div class="screen" id="info-screen">
+  <div class="info-header"><div class="icon">🌸</div><h2>先简单认识一下您</h2><p>填几个基本信息，AI 会更懂怎么跟您聊~</p></div>
+  <div class="info-form">
+    <div><label>👋 怎么称呼您？<span class="hint">（比如：王阿姨、张姐、或者您的名字）</span></label><input type="text" id="info-name" placeholder="比如：王阿姨"></div>
+    <div><label>📅 您是几几年生人？</label><input type="text" id="info-birth" placeholder="比如：1962" maxlength="4"></div>
+    <div><label>🏡 老家是哪里的？</label><input type="text" id="info-hometown" placeholder="比如：河北保定"></div>
+    <div><label>🌾 小时候在哪儿长大的？</label>
+      <select id="info-background"><option value="">请选择...</option><option value="农村">农村</option><option value="镇上">镇上</option><option value="城里">城里</option></select>
+    </div>
+    <div><label>💼 您是做什么工作的？</label><input type="text" id="info-profession" placeholder="比如：老师、工人、医生、做生意…"></div>
+    <div>
+      <label>📑 您的人生可以分成哪几个阶段？<span class="hint">（点选或自己补充，AI 会帮你整理）</span></label>
+      <div class="stage-chips" id="stage-chips"></div>
+      <input type="text" id="info-custom-stages" placeholder="或者自己写：比如 知青下乡、恢复高考、下海经商……" style="margin-top:8px;">
+    </div>
+    <button class="btn-next" id="btn-info-start">✨ 开始聊天！</button>
+  </div>
+</div>
+
+<!-- ═══ 聊天页 ═══ -->
+<div class="screen" id="chat-screen">
+  <div class="chat-header">
+    <div class="left" id="header-left">
+      <span class="icon" id="header-icon">📖</span>
+      <span class="info" id="header-info">回忆录</span>
+      <span class="stage-badge" id="header-stage">第1篇章</span>
+    </div>
+    <button class="btn-save" id="btn-save">💾 存档</button>
+  </div>
+  <div class="messages-container" id="messages-container"></div>
+  <div class="typing-indicator" id="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>
+  <div class="chat-footer">
+    <div class="input-row">
+      <input type="text" id="chat-input" placeholder="说说您的故事…" autocomplete="off">
+      <button class="btn-voice" id="btn-voice" title="按住说话">🎤</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn-write" id="btn-write-chat">✨ 开始写书</button>
+      <button class="btn-next-stage" id="btn-next-stage" style="display:none;">下一篇章 ▶</button>
+    </div>
+    <div id="preview-hint" style="display:none;text-align:center;font-size:12px;color:var(--text-light);padding:4px;">
+      💡 有要改的直接说"这里不对，其实是…"，没问题就说"挺好，继续"~
+    </div>
+    <div id="export-in-chat" style="display:none;gap:8px;padding:4px 0;">
+      <button class="btn-export docx" id="btn-export-docx2" style="flex:1;padding:10px;font-size:14px;">📄 Word</button>
+      <button class="btn-export pdf" id="btn-export-pdf2" style="flex:1;padding:10px;font-size:14px;">📕 PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="progress-overlay" id="progress-overlay"></div>
+<div class="progress-panel" id="progress-panel"><h3>🖼️ 人生篇章</h3><div id="progress-list"></div></div>
+
+<!-- ═══ 审阅页 ═══ -->
+<div class="screen" id="review-screen">
+  <div class="review-header"><h2>📝 您的回忆录</h2><p id="review-book-title"></p></div>
+  <div id="chapters-container" style="width:100%;max-width:500px;display:flex;flex-direction:column;gap:14px;"></div>
+  <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;justify-content:center;">
+    <button class="btn-sm" id="btn-keep-chatting">💬 继续聊聊再改</button>
+    <button class="btn-sm primary" id="btn-go-export">📥 导出下载</button>
+  </div>
+</div>
+
+<div class="revise-overlay" id="revise-overlay">
+  <div class="revise-box"><h4>哪里需要修改？</h4><textarea id="revise-input" placeholder="比如：这段写得不对，其实当时是……"></textarea>
+  <div class="btns"><button class="btn-sm" id="btn-revise-cancel">算了</button><button class="btn-sm primary" id="btn-revise-submit">提交修改</button></div></div>
+</div>
+
+<!-- ═══ 导出页 ═══ -->
+<div class="screen" id="export-screen">
+  <div class="export-icon">🎉</div><div class="export-title">回忆录写好啦！</div><div class="export-sub">选择格式下载，也可以随时回来修改</div>
+  <button class="btn-export docx" id="btn-export-docx">📄 下载 Word 文档</button>
+  <button class="btn-export pdf" id="btn-export-pdf">📕 下载 PDF</button>
+  <button class="btn-sm" id="btn-back-review" style="margin-top:6px;">🔄 回去再看看</button>
+</div>
+
+
+<script>
+// ═══ 工具函数（务必在最前面定义） ═══
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+// ═══ 背景音乐 ═══
+function toggleAudio() {
+  const bgm = document.getElementById('bgm');
+  const btn = document.getElementById('audio-toggle');
+  if (!bgm) return;
+  if (bgm.paused) {
+    bgm.play().catch(() => {});  // 浏览器可能拦截自动播放
+    btn.textContent = '🔊';
+    btn.classList.remove('muted');
+  } else {
+    bgm.pause();
+    btn.textContent = '🔇';
+    btn.classList.add('muted');
+  }
+}
+document.getElementById('audio-toggle').addEventListener('click', toggleAudio);
+
+// ═══ 门延迟出现 ═══
+function revealDoor() {
+  const wrapper = document.querySelector('.landing-door-wrapper');
+  if (wrapper) wrapper.classList.add('visible');
+}
+
+// ═══ 粒子效果 ═══
+function spawnParticles() {
+  const container = $('#particles');
+  for (let i = 0; i < 25; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.animationDelay = Math.random() * 8 + 's';
+    p.style.animationDuration = (6 + Math.random() * 10) + 's';
+    container.appendChild(p);
+  }
+}
+
+// ═══ 门动画 ═══
+function openDoor() {
+  const door = document.getElementById('landing-door');
+  const spill = document.getElementById('light-spill');
+  const landing = document.getElementById('landing-screen');
+  const hint = document.querySelector('.landing-door-hint');
+
+  if (!door || door.classList.contains('open')) return;
+  door.classList.add('open');
+  if (spill) spill.classList.add('active');
+  if (hint) hint.style.opacity = '0';
+
+  // 门开后切换到风格选择
+  setTimeout(() => {
+    if (landing) landing.classList.add('fade-out');
+    setTimeout(() => {
+      // 原生 DOM：隐藏 landing，显示 style
+      if (landing) {
+        landing.classList.remove('active');
+        landing.style.display = 'none';
+      }
+      const styleScreen = document.getElementById('style-screen');
+      if (styleScreen) {
+        styleScreen.classList.add('active');
+        styleScreen.style.display = '';
+      }
+      const btnNext = document.getElementById('btn-style-next');
+      if (btnNext) btnNext.disabled = true;
+    }, 800);
+  }, 1400);
+}
+document.getElementById('landing-door').addEventListener('click', openDoor);
+
+// ═══ 主逻辑 ═══
+const STATE = {
+  sessionId: null, phase: 'style_select', stylePreference: '', selectedStyleKey: '',
+  stages: [], currentStageIndex: 0, basicInfo: {}, coverages: {}, chapters: [],
+};
+
+const screens = {
+  landing: $('#landing-screen'),
+  style: $('#style-screen'), info: $('#info-screen'), chat: $('#chat-screen'),
+  review: $('#review-screen'), export: $('#export-screen'),
+};
+const toast = $('#toast'), loading = $('#loading'), loadingText = $('#loading-text');
+
+function showScreen(name) {
+  Object.values(screens).forEach(s => s.classList.remove('active'));
+  screens[name].classList.add('active');
+}
+function showToast(msg, d=2000) {
+  toast.textContent = msg; toast.classList.add('show');
+  clearTimeout(toast._timeout); toast._timeout = setTimeout(() => toast.classList.remove('show'), d);
+}
+function showLoading(msg='请稍候...') { loadingText.textContent = msg; loading.classList.add('active'); }
+function hideLoading() { loading.classList.remove('active'); }
+
+async function api(method, path, body) {
+  const opts = { method, headers: {} };
+  if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  const res = await fetch(window.location.origin + path, opts);
+  if (!res.ok) { const err = await res.json().catch(() => ({detail:'网络出错了'})); throw new Error(err.detail||'请求失败'); }
+  return res.json();
+}
+
+function saveSessionToLocal() { if (STATE.sessionId) localStorage.setItem('memoir_session_id', STATE.sessionId); }
+function loadSessionFromLocal() { return localStorage.getItem('memoir_session_id'); }
+function clearSessionLocal() { localStorage.removeItem('memoir_session_id'); }
+
+// ── 初始化 ──
+async function init() {
+  spawnParticles();
+  // 门在序语文字之后出现（最后一行延迟2.4s + 动画0.8s）
+  setTimeout(revealDoor, 3400);
+
+  // 预加载风格数据
+  try {
+    const data = await api('GET', '/api/styles');
+    renderStyleCards(data.styles);
+    renderStageChips(data.stage_suggestions || []);
+  } catch (e) { console.error('加载失败:', e); }
+
+  const savedId = loadSessionFromLocal();
+  if (savedId) {
+    // 有存档→跳过序语，直接恢复
+    const landing = document.getElementById('landing-screen');
+    if (landing) { landing.style.display = 'none'; landing.classList.remove('active'); }
+    try {
+      const session = await api('GET', `/api/sessions/${savedId}`);
+      STATE.sessionId = session.session_id;
+      STATE.phase = session.phase;
+      STATE.stylePreference = session.style_preference;
+      STATE.stages = session.stages || [];
+      STATE.currentStageIndex = session.current_stage_index || 0;
+      STATE.basicInfo = session.basic_info || {};
+      STATE.coverages = session.coverages || {};
+      STATE.chapters = session.chapters || [];
+
+      if (session.phase === 'chatting' || session.phase === 'previewing' || session.phase === 'done') {
+        await restoreChat(session.messages || []);
+      } else if (session.phase === 'reviewing') {
+        await restoreReview(session);
+      } else {
+        showScreen('info');
+      }
+    } catch (e) {
+      clearSessionLocal();
+      const landing = document.getElementById('landing-screen');
+      if (landing) { landing.style.display = ''; landing.classList.add('active'); }
+    }
+  }
+  // 没有存档 → landing screen 已经在展示中，等用户推门
+}
+
+// ── 风格选择 ──
+function renderStyleCards(styles) {
+  const container = $('#style-cards');
+  container.innerHTML = '';
+  Object.entries(styles).forEach(([key, style]) => {
+    const card = document.createElement('div');
+    card.className = 'style-card'; card.dataset.key = key;
+    card.innerHTML = `<div class="card-label">${style.label}</div><div class="card-preview">${style.preview}</div>`;
+    card.addEventListener('click', () => selectStyle(key, card));
+    container.appendChild(card);
+  });
+}
+function selectStyle(key, cardEl) {
+  $$('.style-card').forEach(c => c.classList.remove('selected'));
+  cardEl.classList.add('selected'); STATE.selectedStyleKey = key;
+  $('#btn-style-next').disabled = false;
+}
+$('#custom-style-input').addEventListener('input', () => {
+  const val = $('#custom-style-input').value.trim();
+  if (val) { $$('.style-card').forEach(c => c.classList.remove('selected')); STATE.selectedStyleKey = ''; }
+  $('#btn-style-next').disabled = !val && !STATE.selectedStyleKey;
+});
+$('#btn-style-next').addEventListener('click', async () => {
+  const custom = $('#custom-style-input').value.trim();
+  if (!STATE.selectedStyleKey && !custom) { showToast('请选一种风格或自己描述~'); return; }
+  showLoading('正在准备...');
+  try {
+    const params = new URLSearchParams();
+    if (STATE.selectedStyleKey) params.set('style_key', STATE.selectedStyleKey);
+    if (custom) params.set('custom_style', custom);
+    const data = await api('POST', `/api/sessions?${params.toString()}`);
+    STATE.sessionId = data.session_id;
+    STATE.stylePreference = data.style_description;
+    STATE.phase = 'info_collect';
+    saveSessionToLocal();
+    showScreen('info');
+  } catch (e) { showToast('出错了: '+e.message); }
+  hideLoading();
+});
+
+// ── 阶段标签 ──
+function renderStageChips(suggestions) {
+  const container = $('#stage-chips');
+  container.innerHTML = '';
+  suggestions.forEach(label => {
+    const chip = document.createElement('span');
+    chip.className = 'stage-chip'; chip.textContent = label;
+    chip.addEventListener('click', () => {
+      chip.classList.toggle('picked');
+    });
+    container.appendChild(chip);
+  });
+}
+
+// ── 基本信息提交 ──
+$('#btn-info-start').addEventListener('click', async () => {
+  const name = $('#info-name').value.trim();
+  const birth = $('#info-birth').value.trim();
+  const hometown = $('#info-hometown').value.trim();
+  const background = $('#info-background').value;
+  const profession = $('#info-profession').value.trim();
+  const customStages = $('#info-custom-stages').value.trim();
+  const pickedStages = Array.from($$('.stage-chip.picked')).map(c => c.textContent).join('、');
+
+  const allStages = [pickedStages, customStages].filter(Boolean).join('、');
+  if (!birth && !hometown && !background) {
+    // 允许跳过，但提醒
+  }
+
+  showLoading('AI 正在帮您规划人生篇章...');
+  try {
+    const data = await api('POST', `/api/sessions/${STATE.sessionId}/setup`, {
+      name, birth_year: birth, hometown, background, profession,
+      custom_stages: allStages,
+    });
+    STATE.stages = data.stages || [];
+    STATE.currentStageIndex = 0;
+    STATE.basicInfo = { name, birth_year: birth, hometown, background, profession };
+    STATE.phase = 'chatting';
+    saveSessionToLocal();
+    showScreen('chat');
+    if (data.greeting) addMessage('assistant', data.greeting);
+    initProgressPanel();
+  } catch (e) { showToast('出错了: '+e.message); }
+  hideLoading();
+});
+
+// ── 聊天 ──
+function addMessage(role, content, isTransition=false) {
+  const container = $('#messages-container');
+  const row = document.createElement('div');
+  row.className = `message-row ${role}`;
+
+  if (role === 'assistant') {
+    const transHtml = isTransition ? `<span class="stage-transition">📖 新篇章</span>` : '';
+    row.innerHTML = `<div class="avatar ai">🌸</div><div class="bubble ai">${transHtml}${escapeHtml(content)}</div>`;
+  } else {
+    row.innerHTML = `<div class="avatar user">👤</div><div class="bubble user">${escapeHtml(content)}</div>`;
+  }
+  row.style.opacity = '0'; row.style.transform = 'translateY(10px)'; row.style.transition = 'opacity 0.3s, transform 0.3s';
+  container.appendChild(row);
+  requestAnimationFrame(() => { row.style.opacity = '1'; row.style.transform = 'translateY(0)'; });
+  scrollToBottom();
+}
+function escapeHtml(text) {
+  const div = document.createElement('div'); div.textContent = text; return div.innerHTML.replace(/\n/g, '<br>');
+}
+function scrollToBottom() { const c = $('#messages-container'); requestAnimationFrame(() => { c.scrollTop = c.scrollHeight; }); }
+function showTyping() { $('#typing-indicator').classList.add('active'); scrollToBottom(); }
+function hideTyping() { $('#typing-indicator').classList.remove('active'); }
+
+async function sendMessage(text) {
+  if (!text.trim() || !STATE.sessionId) return;
+  addMessage('user', text); $('#chat-input').value = '';
+  showTyping();
+  try {
+    const data = await api('POST', `/api/sessions/${STATE.sessionId}/chat`, { message: text });
+    hideTyping();
+    addMessage('assistant', data.reply, data.stage_complete);
+    if (data.coverages) { STATE.coverages = data.coverages; updateProgressPanel(); }
+    if (data.current_stage_index !== undefined) STATE.currentStageIndex = data.current_stage_index;
+
+    if (data.suggest_writing) $('#btn-write-chat').classList.add('has-material');
+    // 预览模式
+    if (data.previewing) {
+      $('#btn-write-chat').style.display = 'none';
+      $('#btn-next-stage').style.display = 'none';
+      $('#preview-hint').style.display = 'block';
+    }
+    if (data.preview_done) {
+      showExportInChat();
+    }
+    if (data.phase === 'done') {
+      showExportInChat();
+    }
+    updateHeader();
+  } catch (e) { hideTyping(); addMessage('assistant', '哎呀，网络好像有点问题，您再试一次看看？'); }
+}
+
+$('#chat-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage($('#chat-input').value); }
+});
+
+// 语音
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null, isRecording = false;
+if (SR) {
+  recognition = new SR(); recognition.lang = 'zh-CN'; recognition.interimResults = false; recognition.continuous = false;
+  recognition.addEventListener('result', e => {
+    const text = e.results[0][0].transcript.trim();
+    if (text) { $('#chat-input').value = text; setTimeout(() => sendMessage(text), 500); }
+  });
+  recognition.addEventListener('error', e => {
+    stopRecording(); if (e.error === 'not-allowed') showToast('请在浏览器设置中允许麦克风'); else if (e.error !== 'aborted') showToast('语音识别出错了，请打字吧~');
+  });
+  recognition.addEventListener('end', () => stopRecording());
+}
+$('#btn-voice').addEventListener('pointerdown', e => { e.preventDefault(); if (!recognition) { showToast('浏览器不支持语音，请打字吧~'); return; } startRecording(); });
+$('#btn-voice').addEventListener('pointerup', e => { e.preventDefault(); stopRecording(); });
+$('#btn-voice').addEventListener('pointerleave', e => { if (isRecording) stopRecording(); });
+function startRecording() { if (isRecording) return; try { recognition.start(); isRecording = true; $('#btn-voice').classList.add('recording'); showToast('正在听您说话…', 3000); } catch(e){} }
+function stopRecording() { if (!isRecording) return; try { recognition.stop(); } catch(e){} isRecording = false; $('#btn-voice').classList.remove('recording'); }
+
+// 篇章面板
+function initProgressPanel() {
+  const list = $('#progress-list'); list.innerHTML = '';
+  STATE.stages.forEach((s, i) => {
+    const score = STATE.coverages[s.key]?.score || 0;
+    const isCurrent = i === STATE.currentStageIndex;
+    const dotClass = i < STATE.currentStageIndex ? 'done' : (isCurrent ? 'current' : 'pending');
+    const item = document.createElement('div');
+    item.className = `progress-item${isCurrent ? ' current' : ''}`;
+    item.innerHTML = `
+      <span class="stage-num">${i+1}</span><span class="stage-icon">${s.icon||'📖'}</span>
+      <span class="stage-label">${s.label}</span><span class="stage-dot ${dotClass}"></span>`;
+    list.appendChild(item);
+  });
+  $('#header-left').addEventListener('click', () => { $('#progress-panel').classList.add('open'); $('#progress-overlay').classList.add('show'); });
+  $('#progress-overlay').addEventListener('click', () => { $('#progress-panel').classList.remove('open'); $('#progress-overlay').classList.remove('show'); });
+  updateHeader();
+}
+function updateProgressPanel() {
+  const items = $$('.progress-item');
+  STATE.stages.forEach((s, i) => {
+    if (items[i]) {
+      const score = STATE.coverages[s.key]?.score || 0;
+      const dot = items[i].querySelector('.stage-dot');
+      if (score > 60) dot.className = 'stage-dot done';
+      else if (i === STATE.currentStageIndex) dot.className = 'stage-dot current';
+    }
+  });
+}
+function updateHeader() {
+  const stage = STATE.stages[STATE.currentStageIndex];
+  if (stage) {
+    $('#header-icon').textContent = stage.icon || '📖';
+    $('#header-stage').textContent = `第${STATE.currentStageIndex+1}篇章`;
+  }
+}
+
+// 下一篇章
+$('#btn-next-stage').addEventListener('click', async () => {
+  showLoading('进入下一篇章...');
+  try {
+    const data = await api('POST', `/api/sessions/${STATE.sessionId}/next-stage`);
+    STATE.currentStageIndex = data.current_stage_index;
+    addMessage('assistant', data.transition, true);
+    initProgressPanel();
+    updateHeader();
+    $('#btn-next-stage').style.display = 'none';
+  } catch (e) { showToast('这已经是最后一章啦~'); }
+  hideLoading();
+});
+
+// 存档
+$('#btn-save').addEventListener('click', () => {
+  saveSessionToLocal();
+  const url = window.location.origin + '?session=' + STATE.sessionId;
+  showToast('已经帮您存好啦！下次打开这个链接就能继续~', 3000);
+  if (navigator.clipboard) navigator.clipboard.writeText(url).catch(()=>{});
+});
+
+// 开始写书
+$('#btn-write-chat').addEventListener('click', async () => {
+  if (!STATE.sessionId) return;
+  showLoading('正在帮您整理回忆录...');
+  try {
+    const data = await api('POST', `/api/sessions/${STATE.sessionId}/start-writing`);
+    STATE.phase = data.phase || 'previewing'; saveSessionToLocal();
+    hideLoading();
+    if (data.reply) {
+      addMessage('assistant', data.reply);
+      // 滚动查看第一章
+      setTimeout(scrollToBottom, 200);
+    }
+    if (data.previewing) {
+      // 隐藏开始写书按钮，换成导出提示
+      $('#btn-write-chat').style.display = 'none';
+      $('#btn-next-stage').style.display = 'none';
+      $('#preview-hint').style.display = 'block';
+    }
+    if (data.preview_done) {
+      $('#btn-write-chat').style.display = 'none';
+      showExportInChat();
+    }
+  } catch (e) { hideLoading(); showToast('生成失败: '+e.message); }
+});
+
+// 章节
+function renderChapters(chapters) {
+  const container = $('#chapters-container'); container.innerHTML = '';
+  chapters.sort((a,b)=>a.order-b.order).forEach(ch => {
+    const card = document.createElement('div'); card.className = 'chapter-card';
+    card.innerHTML = `
+      <div class="ch-title">${ch.title}</div>
+      <div class="ch-body" id="ch-body-${ch.id}">${escapeHtml(ch.content||'')}</div>
+      <div class="ch-actions">
+        <button class="btn-sm expand-btn" data-id="${ch.id}">📖 展开全文</button>
+        <button class="btn-sm revise-btn" data-id="${ch.id}">✏️ 这里写得不对</button>
+      </div>`;
+    container.appendChild(card);
+  });
+  $$('.expand-btn').forEach(btn => { btn.addEventListener('click', () => {
+    const body = $('#ch-body-'+btn.dataset.id); body.classList.toggle('expanded');
+    btn.textContent = body.classList.contains('expanded') ? '📖 收起' : '📖 展开全文';
+  });});
+  $$('.revise-btn').forEach(btn => { btn.addEventListener('click', () => {
+    STATE.revisingChapterId = parseInt(btn.dataset.id);
+    $('#revise-overlay').classList.add('active'); $('#revise-input').value = ''; $('#revise-input').focus();
+  });});
+}
+$('#btn-revise-cancel').addEventListener('click', () => $('#revise-overlay').classList.remove('active'));
+$('#btn-revise-submit').addEventListener('click', async () => {
+  const fb = $('#revise-input').value.trim(); if (!fb) return;
+  $('#revise-overlay').classList.remove('active'); showLoading('正在修改...');
+  try {
+    const data = await api('POST', `/api/sessions/${STATE.sessionId}/chapters/${STATE.revisingChapterId}/revise`, {feedback: fb});
+    const idx = STATE.chapters.findIndex(ch => ch.id === data.id); if (idx>=0) STATE.chapters[idx] = data;
+    renderChapters(STATE.chapters); showToast('改好啦！');
+  } catch(e) { showToast('修改失败: '+e.message); }
+  hideLoading();
+});
+$('#btn-keep-chatting').addEventListener('click', async () => {
+  if (!STATE.sessionId) return;
+  try {
+    const session = await api('GET', `/api/sessions/${STATE.sessionId}`);
+    STATE.phase = 'chatting'; STATE.coverages = session.coverages || {};
+    STATE.stages = session.stages || []; STATE.currentStageIndex = session.current_stage_index || 0;
+    await restoreChat(session.messages || []);
+  } catch(e) { showToast('切换失败'); }
+});
+async function restoreChat(messages) {
+  showScreen('chat'); $('#messages-container').innerHTML = '';
+  messages.forEach(m => addMessage(m.role, m.content, false));
+  initProgressPanel(); scrollToBottom(); updateHeader();
+
+  // 如果是预览模式，恢复预览状态
+  if (STATE.phase === 'previewing') {
+    $('#btn-write-chat').style.display = 'none';
+    $('#btn-next-stage').style.display = 'none';
+    $('#preview-hint').style.display = 'block';
+  }
+  if (STATE.phase === 'done') {
+    showExportInChat();
+  }
+}
+async function restoreReview(session) {
+  showScreen('review');
+  if (session.chapters?.length) { STATE.chapters = session.chapters; renderChapters(session.chapters); }
+  $('#review-book-title').textContent = '《我的人生回忆录》';
+}
+$('#btn-go-export').addEventListener('click', () => showScreen('export'));
+$('#btn-export-docx').addEventListener('click', () => exportBook('docx'));
+$('#btn-export-pdf').addEventListener('click', () => exportBook('pdf'));
+function showExportInChat() {
+  $('#btn-write-chat').style.display = 'none';
+  $('#btn-next-stage').style.display = 'none';
+  $('#preview-hint').style.display = 'none';
+  $('#export-in-chat').style.display = 'flex';
+}
+function exportBook(format) {
+  if (!STATE.sessionId) return;
+  const a = document.createElement('a');
+  a.href = `/api/sessions/${STATE.sessionId}/export?format=${format}`;
+  a.download = `回忆录.${format}`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  showToast('开始下载~');
+}
+$('#btn-export-docx2').addEventListener('click', () => exportBook('docx'));
+$('#btn-export-pdf2').addEventListener('click', () => exportBook('pdf'));
+$('#btn-back-review').addEventListener('click', () => showScreen('review'));
+
+function checkUrlSession() {
+  const params = new URLSearchParams(window.location.search);
+  const sid = params.get('session');
+  if (sid) { localStorage.setItem('memoir_session_id', sid); if (window.history.replaceState) window.history.replaceState({}, '', window.location.pathname); }
+}
+
+checkUrlSession(); init();
+console.log('📖 人生回忆录 v2 — 篇章模式就绪');
+</script>
+</body>
+</html>
